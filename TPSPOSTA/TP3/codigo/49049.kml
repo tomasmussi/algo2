@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document> 
+<Placemark>
+	<name> Polo norte</name>
+	<description> Comienzo del recorrido</description>
+	<Point>
+		<coordinates>-58.36269225,-34.65738198</coordinates>
+	</Point>
+</Placemark>
+<Placemark>
+	<name> Recorrido</name>
+	<description> Recorrido hasta fabrica 49049</description>
+		<LineString>
+			<coordinates>
+				-58.36269225,-34.65738198
+				-58.36431468,-34.6559496
+				-58.36519416,-34.65498891
+				-58.36603578,-34.65401709
+				-58.36607762,-34.6539398
+				-58.36704355,-34.65429966
+				-58.3683699,-34.6547781
+				-58.36880165,-34.65415189
+			</coordinates>
+		</LineString>
+</Placemark>
+<Placemark>
+	<name> Fabrica 49049</name>
+	<description> Fin del recorrido</description>
+	<Point>
+		<coordinates>-58.36880165,-34.65415189</coordinates>
+	</Point>
+</Placemark>
+</Document> 
+</kml>

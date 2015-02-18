@@ -1,0 +1,11 @@
+sesion_inscribir a
+sesion_iniciar 55555
+sesion_inscribir a
+agregar_curso a,Curso 1,00.00,1
+agregar_curso b,Curso 2,00.00,0
+agregar_curso c,Curso 3,00.00,60
+sesion_inscribir a
+listar_inscriptos a
+sesion_inscribir a
+sesion_inscribir b
+sesion_aplicar
