@@ -5,8 +5,8 @@
 #include "abb.h"
 #include "pila.h"
 
-/* Estructura de los nodos del arbol AVL*/
-typedef struct nodo_abb{
+/* Estructura de los nodos del arbol AVL */
+typedef struct nodo_abb {
 	char *clave;
 	void *dato;
 	int altura;
@@ -14,7 +14,7 @@ typedef struct nodo_abb{
 	struct nodo_abb *der;
 } nodo_abb_t;
 
-/* Estructura interna del arbol */
+/* Estructura interna del arbol AVL */
 struct abb {
 	nodo_abb_t *raiz;
 	abb_comparar_clave_t comparar;
@@ -28,13 +28,14 @@ struct abb_iter{
 	pila_t *pila;
 };
 
-/* FUNCIONES INTERNAS */
+/* ***************************************
+ * 		DEFINICION	FUNCIONES AUXILIARES *
+ * 										 *
+ * ***************************************/
 
-static int altura(nodo_abb_t *nodo){
-	if (!nodo)
-		return 0;
-	return nodo->altura;
-}
+
+/* Balancea el nodo y sus ramas en caso de haber un desbalance */
+nodo_abb_t* balancear(nodo_abb_t *nodo);
 
 // Esta función busca un nodo con la clave dada y si lo encuentra devuelve el nodo.
 // Caso contrario devuelve NULL.
@@ -55,10 +56,27 @@ nodo_abb_t* abb_borrar_R(nodo_abb_t *hijo, nodo_abb_t *padre, abb_comparar_clave
 // Función recursiva para recorrer el arbol de manera IN ORDER.
 void abb_in_order_R(nodo_abb_t *nodo, bool visitar(const char *, void *, void *), void *extra,bool *seguir);
 
+/* ***************************************
+ * 	FIN	DEFINICION	FUNCIONES AUXILIARES *
+ * 										 *
+ * ***************************************/
 
-/* FIN FUNCIONES INTERNAS */
 
-/* FUNCIONES DE NODOS */
+
+/* ***************************************
+ * 			FUNCIONES AUXILIARES		 *
+ * 										 *
+ * ***************************************/
+static int altura(nodo_abb_t *nodo){
+	if (!nodo)
+		return 0;
+	return nodo->altura;
+}
+
+nodo_abb_t* balancear(nodo_abb_t *nodo){
+	return NULL;
+}
+
 nodo_abb_t* nodo_buscar(nodo_abb_t *nodo,const char *clave, abb_comparar_clave_t comparar)
 {
 	if (nodo == NULL)
@@ -96,29 +114,7 @@ void nodo_abb_destruir(nodo_abb_t *nodo, abb_destruir_dato_t destruir)
 	free(nodo);
 }
 
-/* FIN FUNCIONES DE NODOS */
 
-abb_t* abb_crear(abb_comparar_clave_t cmp, abb_destruir_dato_t destruir_dato)
-{
-	abb_t *arbol = malloc(sizeof(abb_t));
-	if (arbol == NULL)
-		return NULL;
-	arbol->raiz = NULL;
-	arbol->comparar = cmp;
-	arbol->destruir = destruir_dato;
-	arbol->cantidad = 0;
-	return arbol;
-}
-
-/* Devuelve true si pudo agregar el nodo, false de lo contrario */
-bool abb_guardar(abb_t *arbol, const char *clave, void *dato) {
-	
-	int agregado = abb_guardar_R(arbol->raiz,arbol->comparar ,arbol->destruir , clave, dato, &(arbol->cantidad));
-	if (agregado == 1)
-		arbol->cantidad++;	
-	}
-	return agregado >= 0;
-}
 
 // Devuelve:
 //   0 en el caso de reemplazar (no hace falta ajustar)
@@ -135,14 +131,14 @@ int abb_guardar_R(abb_t *arbol, nodo_abb_t **raiz,const char *clave, void *dato)
 	if (comp != 0){
 		if (comp > 0)
 			comp = 1;
-		else 
+		else
 			comp = -1;
 	}
 	nodo_abb_t **rama = NULL;
 	switch (comp){
 		case 0:
 				if (arbol->destruir != NULL)
-					destruir(padre->dato);
+					arbol->destruir((*raiz)->dato);
 				(*raiz)->dato = dato;
 				return 0;
 				break;
@@ -153,20 +149,99 @@ int abb_guardar_R(abb_t *arbol, nodo_abb_t **raiz,const char *clave, void *dato)
 		case -1:
 				// (*raiz)->clave < clave => derecha
 				rama = &((*raiz)->der);
-				break;		
+				break;
 	};
-	
+
 	int respuesta = abb_guardar_R(arbol, rama, clave, dato);
 	if (respuesta == 1){
 		*raiz = balancear(*raiz);
 	}
-	return respuesta;	
+	return respuesta;
 }
+
 
 nodo_abb_t* clave_buscar_minimo(nodo_abb_t *hijo, nodo_abb_t *padre, abb_comparar_clave_t comparar) {
 	if (hijo->izq != NULL)
 		return clave_buscar_minimo(hijo->izq, hijo, comparar);
 	return abb_borrar_R(hijo, padre, comparar, hijo->clave);
+}
+
+
+nodo_abb_t* abb_borrar_R(nodo_abb_t *hijo, nodo_abb_t *padre, abb_comparar_clave_t comparar, const char *clave){
+	if (hijo == NULL)
+		return NULL;
+	int i = comparar(hijo->clave, clave);
+	if (i == 0){
+		//Evaluo los 3 casos
+		//Caso 1: nodo sin hijos
+		if (hijo->der == NULL && hijo->izq == NULL) {
+			if (padre->der == hijo)
+				padre->der = NULL;
+			else
+				padre->izq = NULL;
+		} else if ((hijo->der == NULL && hijo->izq != NULL) || (hijo->izq == NULL && hijo->der != NULL)) {
+			//Caso 2: el nodo tiene un unico hijo
+			if (padre->der == hijo)
+				padre->der = hijo->izq != NULL ? hijo->izq : hijo->der;
+			else
+				padre->izq = hijo->izq != NULL ? hijo->izq : hijo->der;
+		} else {
+			//Caso 3: tiene 2 hijos, buscar minimo de la derecha
+			nodo_abb_t *minimo = clave_buscar_minimo(hijo->der, hijo, comparar);
+			minimo->izq = hijo->izq;
+			minimo->der = minimo != hijo->der ? hijo->der : NULL;
+			if (padre->izq == hijo)
+				padre->izq = minimo;
+			else
+				padre->der = minimo;
+		}
+		return hijo;
+	}
+	return abb_borrar_R(i > 0 ? hijo->izq : hijo->der, hijo, comparar, clave);
+}
+
+
+
+// Esta función se llama recursivamente para destruir todos los nodos del arbol.
+void destruir_nodos(nodo_abb_t *nodo, void destruir(nodo_abb_t*, abb_destruir_dato_t), abb_destruir_dato_t destruir_dato) {
+	if (nodo != NULL) {
+		destruir_nodos(nodo->izq, destruir, destruir_dato);
+		destruir_nodos(nodo->der, destruir, destruir_dato);
+		destruir(nodo, destruir_dato);
+	}
+}
+
+/* ***************************************
+ * 		FIN	FUNCIONES AUXILIARES		 *
+ * 										 *
+ * ***************************************/
+
+
+ /* ***************************************
+ * 			PRIMITIVAS AVL				 *
+ * 										 *
+ * ***************************************/
+
+abb_t* abb_crear(abb_comparar_clave_t cmp, abb_destruir_dato_t destruir_dato)
+{
+	abb_t *arbol = malloc(sizeof(abb_t));
+	if (arbol == NULL)
+		return NULL;
+	arbol->raiz = NULL;
+	arbol->comparar = cmp;
+	arbol->destruir = destruir_dato;
+	arbol->cantidad = 0;
+	return arbol;
+}
+
+/* Devuelve true si pudo agregar el nodo, false de lo contrario */
+bool abb_guardar(abb_t *arbol, const char *clave, void *dato) {
+
+	int agregado = abb_guardar_R(arbol, &(arbol->raiz), clave, dato);
+	if (agregado == 1){
+		arbol->cantidad++;
+	}
+	return agregado >= 0;
 }
 
 void *abb_borrar(abb_t *arbol, const char *clave) {
@@ -202,39 +277,6 @@ void *abb_borrar(abb_t *arbol, const char *clave) {
 	}
 }
 
-nodo_abb_t* abb_borrar_R(nodo_abb_t *hijo, nodo_abb_t *padre, abb_comparar_clave_t comparar, const char *clave){
-	if (hijo == NULL)
-		return NULL;
-	int i = comparar(hijo->clave, clave);
-	if (i == 0){
-		//Evaluo los 3 casos
-		//Caso 1: nodo sin hijos
-		if (hijo->der == NULL && hijo->izq == NULL) {
-			if (padre->der == hijo)
-				padre->der = NULL;
-			else
-				padre->izq = NULL;
-		} else if ((hijo->der == NULL && hijo->izq != NULL) || (hijo->izq == NULL && hijo->der != NULL)) {
-			//Caso 2: el nodo tiene un unico hijo
-			if (padre->der == hijo)
-				padre->der = hijo->izq != NULL ? hijo->izq : hijo->der;
-			else
-				padre->izq = hijo->izq != NULL ? hijo->izq : hijo->der;
-		} else {
-			//Caso 3: tiene 2 hijos, buscar minimo de la derecha
-			nodo_abb_t *minimo = clave_buscar_minimo(hijo->der, hijo, comparar);
-			minimo->izq = hijo->izq;
-			minimo->der = minimo != hijo->der ? hijo->der : NULL;
-			if (padre->izq == hijo)
-				padre->izq = minimo;
-			else
-				padre->der = minimo;
-		}
-		return hijo;
-	}
-	return abb_borrar_R(i > 0 ? hijo->izq : hijo->der, hijo, comparar, clave);
-}
-
 void *abb_obtener(const abb_t *arbol, const char *clave) {
 	nodo_abb_t *buscado = nodo_buscar(arbol->raiz, clave, arbol->comparar);
 	return buscado != NULL ? buscado->dato : NULL;
@@ -248,15 +290,6 @@ size_t abb_cantidad(abb_t *arbol) {
 	return arbol->cantidad;
 }
 
-// Esta función se llama recursivamente para destruir todos los nodos del arbol.
-void destruir_nodos(nodo_abb_t *nodo, void destruir(nodo_abb_t*, abb_destruir_dato_t), abb_destruir_dato_t destruir_dato) {
-	if (nodo != NULL) {
-		destruir_nodos(nodo->izq, destruir, destruir_dato);
-		destruir_nodos(nodo->der, destruir, destruir_dato);
-		destruir(nodo, destruir_dato);
-	}
-}
-
 void abb_destruir(abb_t *arbol) {
 	destruir_nodos(arbol->raiz, nodo_abb_destruir, arbol->destruir);
 	free(arbol);
@@ -265,6 +298,18 @@ void abb_destruir(abb_t *arbol) {
 bool abb_esta_vacio(const abb_t *arbol) {
 	return arbol->cantidad == 0;
 }
+
+ /* ***************************************
+ * 		FIN	PRIMITIVAS AVL				 *
+ * 										 *
+ * ***************************************/
+
+
+
+ /* ***************************************
+ * 			PRIMITIVAS ITERADOR			 *
+ * 										 *
+ * ***************************************/
 
 
 void abb_in_order(abb_t *arbol, bool visitar(const char *, void *, void *), void *extra) {
@@ -337,3 +382,7 @@ void abb_iter_in_destruir(abb_iter_t* iter) {
 	free(iter);
 }
 
+ /* ***************************************
+ * 		FIN	PRIMITIVAS ITERADOR			 *
+ * 										 *
+ * ***************************************/
