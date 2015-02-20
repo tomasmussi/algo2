@@ -102,4 +102,12 @@ bool abb_iter_in_al_final(const abb_iter_t *iter);
  */
 void abb_iter_in_destruir(abb_iter_t* iter);
 
+/*
+ * Devuelve la altura del arbol
+ * PRE: El arbol fue creado
+ * POST: Devuelve la altura del arbol, si no tiene elementos, la altura es 0
+ * BORRAR ESTA FUNCION UNA VEZ TERMINADO EL AVL
+ * */
+size_t alt(abb_t *arbol);
+
 #endif //ABB_H

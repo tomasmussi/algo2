@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <stdio.h> //BORRAR
+
 #include "abb.h"
 #include "pila.h"
 
@@ -47,8 +49,8 @@ nodo_abb_t* nodo_abb_crear(const char *clave, void *dato);
 /* Destruye el nodo dado. */
 void nodo_abb_destruir(nodo_abb_t *nodo, abb_destruir_dato_t destruir);
 
-/* Hace una rotacion hacia la izquierda de los nodos. 
- * (X) FACTOR DEL NODO
+/* Hace una rotacion hacia la izquierda de los nodos.
+ * Devuelve la nueva RAIZ
  * 
  *		  z                                y
  *		 /  \                            /   \ 
@@ -61,7 +63,7 @@ void nodo_abb_destruir(nodo_abb_t *nodo, abb_destruir_dato_t destruir);
 nodo_abb_t* rotar_izq(nodo_abb_t *raiz);
 
 /* Hace una rotacion hacia la derecha de los nodos.
- * (X) FACTOR DEL NODO
+ * Devuelve la nueva RAIZ
  *        z                                      y 
  *       / \                                   /   \
  *      y   T4      Right Rotate (z)          x      z
@@ -72,10 +74,30 @@ nodo_abb_t* rotar_izq(nodo_abb_t *raiz);
  * */
 nodo_abb_t* rotar_der(nodo_abb_t *raiz);
 
-/* Hace una rotacion primero hacia la izquierda y luego hacia la derecha
- * 
+/* Hace una rotacion primero hacia la izquierda y luego hacia la derecha.
+ * Devuelve la nueva RAIZ
+ *		 z                               z                           x
+ *		/ \                            /   \                        /  \ 
+ *	   y   T4  Left Rotate (y)        x    T4  Right Rotate(z)    y      z
+ *	  / \      - - - - - - - - ->    /  \      - - - - - - - ->  / \    / \
+ *	T1   x                          y    T3                    T1  T2 T3  T4
+ *		/ \                        / \
+ *	  T2   T3                    T1   T2
+ *
  * */
 nodo_abb_t* rotar_izq_der(nodo_abb_t *raiz);
+
+/* Hace una rotacion primero a la derecha y luego hacia la izquierda.
+ * Devuelve la nueva RAIZ
+ *	   z                            z                            x
+ *	  / \                          / \                          /  \ 
+ *	T1   y   Right Rotate (y)    T1   x      Left Rotate(z)   z      y
+ *		/ \  - - - - - - - - ->     /  \   - - - - - - - ->  / \    / \
+ *	   x   T4                      T2   y                  T1  T2  T3  T4
+ *	  / \                              /  \
+ *	T2   T3                           T3   T4
+ * */
+nodo_abb_t* rotar_der_izq(nodo_abb_t *raiz);
 
 /* Función recursiva para el guardado de un nuevo elemento con los datos pasados. */
 int abb_guardar_R(abb_t *arbol, nodo_abb_t **raiz,const char *clave, void *dato);
@@ -107,19 +129,64 @@ size_t maximo(size_t n1, size_t n2){
 	return n1 > n2 ? n1 : n2;
 }
 
+nodo_abb_t* rotar_izq(nodo_abb_t *raiz){
+	if (!raiz)
+		return NULL;
+	nodo_abb_t *reemplazo = raiz->der;
+	raiz->der = reemplazo->izq;
+	reemplazo->izq = raiz;
+	
+	raiz->altura = maximo(  altura(raiz->der),  altura(raiz->izq)  ) + 1;
+	reemplazo->altura = maximo( altura(reemplazo->der) , altura(reemplazo->izq) ) + 1;
+	return reemplazo;
+}
+
+nodo_abb_t* rotar_der(nodo_abb_t *raiz){
+	nodo_abb_t *reemplazo = raiz->izq;
+	raiz->izq = reemplazo->der;
+	reemplazo->der = raiz;	
+	
+	raiz->altura = maximo(  altura(raiz->der),  altura(raiz->izq)  ) + 1;
+	reemplazo->altura = maximo( altura(reemplazo->der) , altura(reemplazo->izq) ) + 1;
+	return reemplazo;
+}
+
+nodo_abb_t* rotar_izq_der(nodo_abb_t *raiz){
+	raiz->izq = rotar_izq(raiz->izq);
+	return rotar_der(raiz);
+}
+
+nodo_abb_t* rotar_der_izq(nodo_abb_t *raiz){
+	raiz->der = rotar_der(raiz->der);
+	return rotar_izq(raiz);	
+}
+
 nodo_abb_t* ajustar_uno(nodo_abb_t *nodo){
 	switch (altura(nodo->der) - altura(nodo->izq)){
 		case 2:
 				// Rama derecha mas alta
-				
+				if ( altura(nodo->der->der) - altura(nodo->der->izq) == -1){
+					// Requiere rotar primero hacia la derecha
+					nodo = rotar_der_izq(nodo);
+				} else {
+					// Caso simple, solo rotar a la izq
+					nodo = rotar_izq(nodo);
+				}				
 				break;
 		case -2:
 				// Rama izquiera mas alta
-				
+				if ( altura(nodo->izq->der) - altura(nodo->izq->izq) == 1 ){
+					// Requiere rotar primero hacia la izquierda
+					nodo = rotar_izq_der(nodo);
+				} else {
+					// Caso simple, solo rotar a la derecha
+					nodo = rotar_der(nodo);
+				}
 				break;
-	};
-		
-	nodo->altura = maximo(altura(nodo->izq), altura(nodo->der)) + 1;
+		default:
+				nodo->altura = maximo(altura(nodo->izq), altura(nodo->der)) + 1;
+				break;
+	};	
 	return nodo;
 }
 
@@ -342,6 +409,17 @@ void abb_destruir(abb_t *arbol) {
 
 bool abb_esta_vacio(const abb_t *arbol) {
 	return arbol->cantidad == 0;
+}
+
+size_t alt_r(nodo_abb_t *raiz){
+	if (raiz == NULL){
+		return 0;
+	}
+	return maximo(alt_r(raiz->izq), alt_r(raiz->der)) + 1;
+}
+
+size_t alt(abb_t *arbol){
+	return alt_r(arbol->raiz);
 }
 
  /* ***************************************
