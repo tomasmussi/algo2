@@ -35,25 +35,55 @@ struct abb_iter{
 
 
 /* Balancea el nodo y sus ramas en caso de haber un desbalance */
-nodo_abb_t* balancear(nodo_abb_t *nodo);
+nodo_abb_t* ajustar_uno(nodo_abb_t *nodo);
 
-// Esta función busca un nodo con la clave dada y si lo encuentra devuelve el nodo.
-// Caso contrario devuelve NULL.
+/* Esta función busca un nodo con la clave dada y si lo encuentra devuelve el nodo.
+ Caso contrario devuelve NULL. */
 nodo_abb_t* nodo_buscar(nodo_abb_t *nodo,const char *clave, abb_comparar_clave_t comparar);
 
-// Crea un nodo con la clave y dato pasados.
+/* Crea un nodo con la clave y dato pasados. */
 nodo_abb_t* nodo_abb_crear(const char *clave, void *dato);
 
-// Destruye el nodo dado.
+/* Destruye el nodo dado. */
 void nodo_abb_destruir(nodo_abb_t *nodo, abb_destruir_dato_t destruir);
 
-// Función recursiva para el guardado de un nuevo elemento con los datos pasados.
+/* Hace una rotacion hacia la izquierda de los nodos. 
+ * (X) FACTOR DEL NODO
+ * 
+ *		  z                                y
+ *		 /  \                            /   \ 
+ *		T1   y     Left Rotate(z)       z      x
+ *			/  \   - - - - - - - ->    / \    / \
+ *		   T2   x                     T1  T2 T3  T4
+ *			   / \
+ *			 T3  T4
+ *  */
+nodo_abb_t* rotar_izq(nodo_abb_t *raiz);
+
+/* Hace una rotacion hacia la derecha de los nodos.
+ * (X) FACTOR DEL NODO
+ *        z                                      y 
+ *       / \                                   /   \
+ *      y   T4      Right Rotate (z)          x      z
+ *     / \          - - - - - - - - ->      /  \    /  \ 
+ *    x   T3                               T1  T2  T3  T4
+ *   / \
+ * T1   T2
+ * */
+nodo_abb_t* rotar_der(nodo_abb_t *raiz);
+
+/* Hace una rotacion primero hacia la izquierda y luego hacia la derecha
+ * 
+ * */
+nodo_abb_t* rotar_izq_der(nodo_abb_t *raiz);
+
+/* Función recursiva para el guardado de un nuevo elemento con los datos pasados. */
 int abb_guardar_R(abb_t *arbol, nodo_abb_t **raiz,const char *clave, void *dato);
 
-// Función recursiva para el borrado de un elemento clave igual a la pasada.
+/* Función recursiva para el borrado de un elemento clave igual a la pasada. */
 nodo_abb_t* abb_borrar_R(nodo_abb_t *hijo, nodo_abb_t *padre, abb_comparar_clave_t comparar, const char *clave);
 
-// Función recursiva para recorrer el arbol de manera IN ORDER.
+/* Función recursiva para recorrer el arbol de manera IN ORDER. */
 void abb_in_order_R(nodo_abb_t *nodo, bool visitar(const char *, void *, void *), void *extra,bool *seguir);
 
 /* ***************************************
@@ -73,8 +103,24 @@ static int altura(nodo_abb_t *nodo){
 	return nodo->altura;
 }
 
-nodo_abb_t* balancear(nodo_abb_t *nodo){
-	return NULL;
+size_t maximo(size_t n1, size_t n2){
+	return n1 > n2 ? n1 : n2;
+}
+
+nodo_abb_t* ajustar_uno(nodo_abb_t *nodo){
+	switch (altura(nodo->der) - altura(nodo->izq)){
+		case 2:
+				// Rama derecha mas alta
+				
+				break;
+		case -2:
+				// Rama izquiera mas alta
+				
+				break;
+	};
+		
+	nodo->altura = maximo(altura(nodo->izq), altura(nodo->der)) + 1;
+	return nodo;
 }
 
 nodo_abb_t* nodo_buscar(nodo_abb_t *nodo,const char *clave, abb_comparar_clave_t comparar)
@@ -102,7 +148,7 @@ nodo_abb_t* nodo_abb_crear(const char *clave, void *dato)
 	nodo->dato = dato;
 	nodo->izq = NULL;
 	nodo->der = NULL;
-	nodo->altura = 0;
+	nodo->altura = 1;
 	return nodo;
 }
 
@@ -113,7 +159,6 @@ void nodo_abb_destruir(nodo_abb_t *nodo, abb_destruir_dato_t destruir)
 	free(nodo->clave);
 	free(nodo);
 }
-
 
 
 // Devuelve:
@@ -154,7 +199,7 @@ int abb_guardar_R(abb_t *arbol, nodo_abb_t **raiz,const char *clave, void *dato)
 
 	int respuesta = abb_guardar_R(arbol, rama, clave, dato);
 	if (respuesta == 1){
-		*raiz = balancear(*raiz);
+		*raiz = ajustar_uno(*raiz);
 	}
 	return respuesta;
 }
