@@ -40,8 +40,7 @@ nodo_abb_t* nodo_abb_crear(const char *clave, void *dato);
 void nodo_abb_destruir(nodo_abb_t *nodo, abb_destruir_dato_t destruir);
 
 // Función recursiva para el guardado de un nuevo elemento con los datos pasados.
-bool abb_guardar_R(nodo_abb_t *padre,abb_comparar_clave_t comparar,	abb_destruir_dato_t destruir, const char *clave, void *dato,
-	size_t *abb_cantidad);
+int abb_guardar_R(abb_t *arbol, nodo_abb_t **raiz, const char *clave, void *dato);
 
 // Función recursiva para el borrado de un elemento clave igual a la pasada.
 nodo_abb_t* abb_borrar_R(nodo_abb_t *hijo, nodo_abb_t *padre, abb_comparar_clave_t comparar, const char *clave);
@@ -101,41 +100,47 @@ abb_t* abb_crear(abb_comparar_clave_t cmp, abb_destruir_dato_t destruir_dato)
 }
 
 bool abb_guardar(abb_t *arbol, const char *clave, void *dato) {
-	if (arbol->raiz != NULL) {
-		return abb_guardar_R(arbol->raiz,arbol->comparar ,arbol->destruir , clave, dato, &(arbol->cantidad));
-	} else {
-		nodo_abb_t *nodo = nodo_abb_crear(clave,dato);
-		if (nodo == NULL)
-			return false;
-		arbol->raiz = nodo;
+	int respuesta = abb_guardar_R(arbol, &(arbol->raiz), clave,dato);
+	if (respuesta == 1){
 		arbol->cantidad++;
-		return true;
 	}
+	return respuesta >= 0;
 }
 
-bool abb_guardar_R(nodo_abb_t *padre,abb_comparar_clave_t comparar,	abb_destruir_dato_t destruir, const char *clave, void *dato,
-	size_t *abb_cantidad) {
-	int i = comparar(padre->clave, clave);
-	if (i == 0)	{
-		if (destruir != NULL)
-			destruir(padre->dato);
-		padre->dato = dato;
-		return true;
+/*
+ * Inserta recursivamente un nodo en el arbol
+ * Devuelve 1 si inserto exitosamente
+ * Devuelve 0 si reemplazo un nodo existente
+ * Devuelve -1 si ocurrio un error
+ */
+int abb_guardar_R(abb_t *arbol, nodo_abb_t **raiz, const char *clave, void *dato) {
+	if (! *raiz){
+		*raiz = nodo_abb_crear(clave, dato);
+		return (*raiz != NULL) ? 1 : -1;
 	}
-	nodo_abb_t *hijo = i < 0 ? padre->der : padre->izq;
-	if (hijo != NULL)
-		return abb_guardar_R(hijo, comparar, destruir, clave,dato,abb_cantidad);
-	else {
-		nodo_abb_t *nodo = nodo_abb_crear(clave, dato);
-		if (nodo == NULL)
-			return false;
-		if (i < 0)
-			padre->der = nodo;
-		else
-			padre->izq = nodo;
-		(*abb_cantidad)++;
-		return true;
+
+	int i = arbol->comparar((*raiz)->clave, clave);
+	if (i != 0){
+		i = i > 0 ? 1 : -1;
 	}
+	nodo_abb_t **rama = NULL;
+	switch(i){
+		case 0:
+				if (arbol->destruir != NULL)
+					arbol->destruir((*raiz)->dato);
+				(*raiz)->dato = dato;
+				return 0;
+				break;
+		case 1:
+				// izquierda
+				rama = & ((*raiz)->izq);
+				break;
+		case -1:
+				// derecha
+				rama = & ((*raiz)->der);
+				break;
+	};	
+	return abb_guardar_R(arbol, rama, clave,dato);
 }
 
 nodo_abb_t* clave_buscar_minimo(nodo_abb_t *hijo, nodo_abb_t *padre, abb_comparar_clave_t comparar) {
