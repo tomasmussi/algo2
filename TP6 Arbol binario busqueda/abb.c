@@ -149,6 +149,7 @@ nodo_abb_t* clave_buscar_minimo(nodo_abb_t *hijo, nodo_abb_t *padre, abb_compara
 	return abb_borrar_R(hijo, padre, comparar, hijo->clave);
 }
 
+/*
 void *abb_borrar(abb_t *arbol, const char *clave) {
 	if (abb_esta_vacio(arbol))
 		return NULL;
@@ -180,6 +181,19 @@ void *abb_borrar(abb_t *arbol, const char *clave) {
 		arbol->cantidad--;
 		return dato;
 	}
+}*/
+
+void *abb_borrar(abb_t *arbol, const char *clave) {
+	if (abb_esta_vacio(arbol))
+		return NULL;
+	
+	void* dato;
+	bool borrado = abb_borrar_R(arbol, *(arbol->raiz), clave, &dato);
+	if (!borrado){
+		return NULL;
+	}
+	arbol->cantidad--;
+	return dato;
 }
 
 nodo_abb_t* abb_borrar_R(nodo_abb_t *hijo, nodo_abb_t *padre, abb_comparar_clave_t comparar, const char *clave){
