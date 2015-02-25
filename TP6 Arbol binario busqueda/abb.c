@@ -27,7 +27,9 @@ struct abb_iter{
 	pila_t *pila;
 };
 
-/* FUNCIONES INTERNAS */
+/* **************************************
+ *  FUNCIONES INTERNAS 					*
+ * **************************************/
 
 // Esta función busca un nodo con la clave dada y si lo encuentra devuelve el nodo.
 // Caso contrario devuelve NULL.
@@ -48,8 +50,11 @@ nodo_abb_t* abb_borrar_R(nodo_abb_t *hijo, nodo_abb_t *padre, abb_comparar_clave
 // Función recursiva para recorrer el arbol de manera IN ORDER.
 void abb_in_order_R(nodo_abb_t *nodo, bool visitar(const char *, void *, void *), void *extra,bool *seguir);
 
+bool es_hoja(nodo_abb_t **nodo);
 
-/* FIN FUNCIONES INTERNAS */
+/* **************************************
+ *  FIN FUNCIONES INTERNAS				*
+ * **************************************/
 
 nodo_abb_t* nodo_buscar(nodo_abb_t *nodo,const char *clave, abb_comparar_clave_t comparar)
 {
@@ -149,6 +154,9 @@ nodo_abb_t* clave_buscar_minimo(nodo_abb_t *hijo, nodo_abb_t *padre, abb_compara
 	return abb_borrar_R(hijo, padre, comparar, hijo->clave);
 }
 
+bool es_hoja(nodo_abb_t **nodo){
+	
+}
 /*
 void *abb_borrar(abb_t *arbol, const char *clave) {
 	if (abb_esta_vacio(arbol))
@@ -196,37 +204,56 @@ void *abb_borrar(abb_t *arbol, const char *clave) {
 	return dato;
 }
 
-nodo_abb_t* abb_borrar_R(nodo_abb_t *hijo, nodo_abb_t *padre, abb_comparar_clave_t comparar, const char *clave){
-	if (hijo == NULL)
-		return NULL;
-	int i = comparar(hijo->clave, clave);
-	if (i == 0){
-		//Evaluo los 3 casos
-		//Caso 1: nodo sin hijos
-		if (hijo->der == NULL && hijo->izq == NULL) {
-			if (padre->der == hijo)
-				padre->der = NULL;
-			else
-				padre->izq = NULL;
-		} else if ((hijo->der == NULL && hijo->izq != NULL) || (hijo->izq == NULL && hijo->der != NULL)) {
-			//Caso 2: el nodo tiene un unico hijo
-			if (padre->der == hijo)
-				padre->der = hijo->izq != NULL ? hijo->izq : hijo->der;
-			else
-				padre->izq = hijo->izq != NULL ? hijo->izq : hijo->der;
-		} else {
-			//Caso 3: tiene 2 hijos, buscar minimo de la derecha
-			nodo_abb_t *minimo = clave_buscar_minimo(hijo->der, hijo, comparar);
-			minimo->izq = hijo->izq;
-			minimo->der = minimo != hijo->der ? hijo->der : NULL;
-			if (padre->izq == hijo)
-				padre->izq = minimo;
-			else
-				padre->der = minimo;
-		}
-		return hijo;
+// Devuelve:
+// 	true  en el caso de haber borrado correctamente
+// 	false en el caso de haber ocurrido un error (no se encontro la clave a borrar)
+bool abb_borrar_R(abb_t *arbol, nodo_abb_t **raiz, const char *clave, void **dato){
+	if ((*raiz) == NULL){
+		*dato = NULL;
+		return false;
 	}
-	return abb_borrar_R(i > 0 ? hijo->izq : hijo->der, hijo, comparar, clave);
+
+	int cmp = comparar((*raiz)->clave, clave);
+	if (cmp != 0)
+		cmp = cmp > 0 ? 1 : -1;
+	nodo_abb_t **rama;
+	switch (cmp){
+		case 1:
+				*rama = &((*raiz)->izq);
+				break;
+		case -1:
+				*rama = &((*raiz)->der);
+				break;				
+		case 0:
+				// El nodo actual es el que hay que borrar
+				//Evaluo los 3 casos
+				//Caso 1: nodo sin hijos			
+				if (hijo->der == NULL && hijo->izq == NULL) {
+					if (padre->der == hijo)
+						padre->der = NULL;
+					else
+						padre->izq = NULL;
+				} else if ((hijo->der == NULL && hijo->izq != NULL) || (hijo->izq == NULL && hijo->der != NULL)) {
+					//Caso 2: el nodo tiene un unico hijo
+					if (padre->der == hijo)
+						padre->der = hijo->izq != NULL ? hijo->izq : hijo->der;
+					else
+						padre->izq = hijo->izq != NULL ? hijo->izq : hijo->der;
+				} else {
+					//Caso 3: tiene 2 hijos, buscar minimo de la derecha
+					nodo_abb_t *minimo = clave_buscar_minimo(hijo->der, hijo, comparar);
+					minimo->izq = hijo->izq;
+					minimo->der = minimo != hijo->der ? hijo->der : NULL;
+					if (padre->izq == hijo)
+						padre->izq = minimo;
+					else
+						padre->der = minimo;
+				}
+				return hijo;
+	};
+	bool respuesta = abb_guardar_R(arbol, rama, clave, dato);
+	return respuesta;
+	
 }
 
 void *abb_obtener(const abb_t *arbol, const char *clave) {
