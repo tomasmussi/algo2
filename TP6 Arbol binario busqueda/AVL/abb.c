@@ -103,7 +103,13 @@ nodo_abb_t* rotar_der_izq(nodo_abb_t *raiz);
 int abb_guardar_R(abb_t *arbol, nodo_abb_t **raiz,const char *clave, void *dato);
 
 /* Función recursiva para el borrado de un elemento clave igual a la pasada. */
-nodo_abb_t* abb_borrar_R(nodo_abb_t *hijo, nodo_abb_t *padre, abb_comparar_clave_t comparar, const char *clave);
+bool abb_borrar_R(abb_t *arbol, nodo_abb_t **raiz, const char *clave, void **dato);
+
+/* Funcion que determina si un nodo es hoja */
+bool es_hoja(nodo_abb_t **nodo);
+
+/* Reemplaza un nodo por su hijo mas conveniente */
+int reemplazar_por_hijo(nodo_abb_t **raiz);
 
 /* Función recursiva para recorrer el arbol de manera IN ORDER. */
 void abb_in_order_R(nodo_abb_t *nodo, bool visitar(const char *, void *, void *), void *extra,bool *seguir);
@@ -271,47 +277,109 @@ int abb_guardar_R(abb_t *arbol, nodo_abb_t **raiz,const char *clave, void *dato)
 	return respuesta;
 }
 
-
-nodo_abb_t* clave_buscar_minimo(nodo_abb_t *hijo, nodo_abb_t *padre, abb_comparar_clave_t comparar) {
-	if (hijo->izq != NULL)
-		return clave_buscar_minimo(hijo->izq, hijo, comparar);
-	return abb_borrar_R(hijo, padre, comparar, hijo->clave);
+bool es_hoja(nodo_abb_t **nodo){
+	return (*nodo)->izq == NULL && (*nodo)->der == NULL;
 }
 
-
-nodo_abb_t* abb_borrar_R(nodo_abb_t *hijo, nodo_abb_t *padre, abb_comparar_clave_t comparar, const char *clave){
-	if (hijo == NULL)
-		return NULL;
-	int i = comparar(hijo->clave, clave);
-	if (i == 0){
-		//Evaluo los 3 casos
-		//Caso 1: nodo sin hijos
-		if (hijo->der == NULL && hijo->izq == NULL) {
-			if (padre->der == hijo)
-				padre->der = NULL;
-			else
-				padre->izq = NULL;
-		} else if ((hijo->der == NULL && hijo->izq != NULL) || (hijo->izq == NULL && hijo->der != NULL)) {
-			//Caso 2: el nodo tiene un unico hijo
-			if (padre->der == hijo)
-				padre->der = hijo->izq != NULL ? hijo->izq : hijo->der;
-			else
-				padre->izq = hijo->izq != NULL ? hijo->izq : hijo->der;
-		} else {
-			//Caso 3: tiene 2 hijos, buscar minimo de la derecha
-			nodo_abb_t *minimo = clave_buscar_minimo(hijo->der, hijo, comparar);
-			minimo->izq = hijo->izq;
-			minimo->der = minimo != hijo->der ? hijo->der : NULL;
-			if (padre->izq == hijo)
-				padre->izq = minimo;
-			else
-				padre->der = minimo;
-		}
-		return hijo;
+nodo_abb_t** menor_de_mayores(nodo_abb_t **raiz){
+	nodo_abb_t **reemplazo = &((*raiz)->der);
+	while ( (*reemplazo)->izq != NULL){
+		reemplazo = &(*reemplazo)->izq;
 	}
-	return abb_borrar_R(i > 0 ? hijo->izq : hijo->der, hijo, comparar, clave);
+	return reemplazo;
 }
 
+nodo_abb_t** mayor_de_menores(nodo_abb_t **raiz){
+	nodo_abb_t **reemplazo = &((*raiz)->izq);
+	while ( (*reemplazo)->der != NULL){
+		reemplazo = &(*reemplazo)->der;
+	}
+	return reemplazo;
+}
+
+/*
+ * Esta funcion devuelve:
+ * 0 si el nodo es una hoja (listo para borrarse del arbol)
+ * 1 si hace un swap con el menor hijo de los mayores (derecha) del nodo raiz
+ * -1 si hace un swap con el mayor hijo de los menores (izquierda) del nodo raiz
+ * */
+int reemplazar_por_hijo(nodo_abb_t **raiz){
+	if (! *raiz || es_hoja(raiz)){
+		return 0;
+	}
+	
+	nodo_abb_t **reemplazo = NULL;
+	int respuesta = 0;
+	if (altura((*raiz)->der) >= altura((*raiz)->izq)){
+		reemplazo = menor_de_mayores(raiz);
+		respuesta = 1;
+	} else {
+		reemplazo = mayor_de_menores(raiz);
+		respuesta = -1;
+	}
+
+	// Swap de clave y valor
+	void* aux;
+	aux = (*raiz)->clave;
+	(*raiz)->clave = (*reemplazo)->clave;
+	(*reemplazo)->clave = aux;
+	
+	aux = (*raiz)->dato;
+	(*raiz)->dato = (*reemplazo)->dato;
+	(*reemplazo)->dato = aux;
+	return respuesta;
+}
+
+
+
+// Devuelve:
+// 	true  en el caso de haber borrado correctamente
+// 	false en el caso de haber ocurrido un error (no se encontro la clave a borrar)
+bool abb_borrar_R(abb_t *arbol, nodo_abb_t **raiz, const char *clave, void **dato){
+	if ((*raiz) == NULL){
+		*dato = NULL;
+		return false;
+	}
+
+	int cmp = arbol->comparar((*raiz)->clave, clave);
+	if (cmp != 0)
+		cmp = cmp > 0 ? 1 : -1;
+	nodo_abb_t **rama = NULL;
+	switch (cmp){
+		case 1:
+				rama = &((*raiz)->izq);
+				break;
+		case -1:
+				rama = &((*raiz)->der);
+				break;				
+		case 0:
+				// El nodo actual es el que hay que borrar
+				// La idea a seguir es: si es hoja, problema resuelto, borro y listo
+				// Si tiene algun hijo, evaluo por cual reemplazar. Reemplazo el padre con hijo,
+				// hasta convertir el nodo que quiero borrar en una hoja
+				switch (reemplazar_por_hijo(raiz)){
+					case -1:
+							rama = &((*raiz)->izq);
+							break;
+					case 1:
+							rama = &((*raiz)->der);
+							break;
+					case 0:
+							*dato = (*raiz)->dato;
+							free((*raiz)->clave);
+							free((*raiz));
+							
+							*raiz = NULL;
+							return true;							
+				};
+				break;
+	};
+	bool respuesta = abb_borrar_R(arbol, rama, clave, dato);
+	if (respuesta){
+		*raiz = ajustar_uno(*raiz);
+	}
+	return respuesta;
+}
 
 
 // Esta función se llama recursivamente para destruir todos los nodos del arbol.
@@ -359,34 +427,14 @@ bool abb_guardar(abb_t *arbol, const char *clave, void *dato) {
 void *abb_borrar(abb_t *arbol, const char *clave) {
 	if (abb_esta_vacio(arbol))
 		return NULL;
-	if (arbol->comparar(arbol->raiz->clave, clave) == 0) {
-		void *dato = arbol->raiz->dato;
-		nodo_abb_t *nueva_raiz = NULL;
-		//Si no tiene hijos, todo bien
-		//Si tiene alguno, tengo que elegir por cual reemplazar la nueva raiz
-		//Verifico que tenga ambos
-		if (arbol->raiz->izq != NULL && arbol->raiz->der != NULL) {
-			nueva_raiz = clave_buscar_minimo(arbol->raiz->der, arbol->raiz, arbol->comparar);
-			nueva_raiz->izq = arbol->raiz->izq;
-			if (nueva_raiz != arbol->raiz->der)
-				nueva_raiz->der = arbol->raiz->der;
-		} else if (arbol->raiz->der != NULL || arbol->raiz->izq != NULL) {
-			//Tiene uno solo de los 2, lo reemplazo por ese
-			nueva_raiz = arbol->raiz->der != NULL ? arbol->raiz->der : arbol->raiz->izq;
-		}
-		nodo_abb_destruir(arbol->raiz, NULL);
-		arbol->raiz = nueva_raiz;
-		arbol->cantidad--;
-		return dato;
-	} else {
-		nodo_abb_t *nodo = abb_borrar_R(arbol->raiz, NULL, arbol->comparar, clave);
-		if (nodo == NULL)
-			return NULL;
-		void *dato = nodo->dato;
-		nodo_abb_destruir(nodo, NULL);
-		arbol->cantidad--;
-		return dato;
+	
+	void* dato;
+	bool borrado = abb_borrar_R(arbol, &(arbol->raiz), clave, &(dato));
+	if (!borrado){
+		return NULL;
 	}
+	arbol->cantidad--;
+	return dato;
 }
 
 void *abb_obtener(const abb_t *arbol, const char *clave) {
